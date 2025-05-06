@@ -124,26 +124,81 @@
             font-size: 14px;
             margin-top: 10px;
         }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .nav-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .nav-button:hover {
+            background-color: #3e8e41;
+        }
+        
+        .auto-refresh-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .auto-refresh-status {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
     <header>
-        <div class="back-button">&#8592;</div>
+       
         <h1>Location Data</h1>
     </header>
+    
+    <div class="nav-buttons">
+       
+        <a href="graph.html" class="nav-button">Graph View</a>
+    </div>
+    
+    <div class="auto-refresh-status">
+        Auto-refresh active <span class="auto-refresh-indicator"></span>
+    </div>
     
     <div id="data-container">
         <div class="loading">Loading environmental data...</div>
     </div>
 
-    <button class="refresh-button" onclick="fetchData()">Refresh Data</button>
-    <button class="refresh-button" ><a href="graph.html"  style="text-decoration: none;color: white;">Visualize</a></button>
+    <button class="refresh-button" onclick="restartAutoRefresh()">Refresh Now</button>
     <div class="last-updated" id="last-updated"></div>
     
     <script>
-        // Default location coordinates (can be changed or made dynamic)
-        const lat = 13.70730;
-        const lon = 79.59450;
+        // Global variable to store the refresh interval
+        let refreshInterval;
         
         // Template for each data card
         function createDataCard(icon, bgClass, title, value) {
@@ -163,7 +218,7 @@
             // Update container with all the data cards
             const container = document.getElementById('data-container');
             
-            if (!data || !data.coord) {
+            if (!data) {
                 container.innerHTML = '<div class="error-message">Error loading data. Please try again later.</div>';
                 return;
             }
@@ -171,65 +226,47 @@
             // Format the data cards
             let html = '';
             
+            // Extract location from the CO sensor data (all sensors have the same location)
+            const location = data.CO.Location;
+            
             // Location
             html += createDataCard('📍', 'icon-location', 'Location Coordinates', 
-                                   `Lat: ${data.coord.lat.toFixed(5)}, Lon: ${data.coord.lon.toFixed(5)}`);
+                                   `Lat: ${location.lat}, Lon: ${location.long}`);
             
-            // Air Quality data
-            if (data.list && data.list[0] && data.list[0].components) {
-                const components = data.list[0].components;
-                
-                // Carbon Monoxide
-                if (components.co !== undefined) {
-                    html += createDataCard('CO', 'icon-co', 'Carbon Monoxide', 
-                                           `CO ${components.co.toFixed(2)} mg/m³`);
-                }
-                
-                // Ammonia
-                if (components.nh3 !== undefined) {
-                    html += createDataCard('NH₃', 'icon-nh3', 'Ammonia', 
-                                          `NH₃ ${components.nh3.toFixed(2)} μg/m³`);
-                }
-                
-                // Nitrogen Dioxide
-                if (components.no2 !== undefined) {
-                    html += createDataCard('NO₂', 'icon-no2', 'Nitrogen Dioxide', 
-                                          `NO₂ ${components.no2.toFixed(2)} μg/m³`);
-                }
-                
-                // PM2.5
-                if (components.pm2_5 !== undefined) {
-                    html += createDataCard('PM', 'icon-pm25', 'Particulate Matter', 
-                                          `PM2.5 ${components.pm2_5.toFixed(2)} μg/m³`);
-                }
-                
-                // PM10
-                if (components.pm10 !== undefined) {
-                    html += createDataCard('PM', 'icon-pm10', 'Particulate Matter', 
-                                          `PM10 ${components.pm10.toFixed(2)} μg/m³`);
-                }
+            // Carbon Monoxide
+            if (data.CO && data.CO.value !== undefined) {
+                html += createDataCard('CO', 'icon-co', 'Carbon Monoxide', 
+                                       `CO ${data.CO.value} mg/m³`);
             }
             
-            // Weather data
-            if (data.main) {
-                // Temperature
-                if (data.main.temp !== undefined) {
-                    const tempC = data.main.temp - 273.15; // Convert from Kelvin to Celsius
-                    html += createDataCard('🌡️', 'icon-temp', 'Temperature', 
-                                          `${tempC.toFixed(2)} °C`);
-                }
-                
-                // Humidity
-                if (data.main.humidity !== undefined) {
-                    html += createDataCard('💧', 'icon-humidity', 'Humidity', 
-                                          `${data.main.humidity}%`);
-                }
-                
-                // Pressure
-                if (data.main.pressure !== undefined) {
-                    html += createDataCard('🔄', 'icon-pressure', 'Pressure', 
-                                          `${data.main.pressure} mb`);
-                }
+            // Ammonia
+            if (data.NH3 && data.NH3.value !== undefined) {
+                html += createDataCard('NH₃', 'icon-nh3', 'Ammonia', 
+                                      `NH₃ ${data.NH3.value} μg/m³`);
+            }
+            
+            // Nitrogen Dioxide
+            if (data.NO && data.NO.value !== undefined) {
+                html += createDataCard('NO₂', 'icon-no2', 'Nitrogen Dioxide', 
+                                      `NO₂ ${data.NO.value} μg/m³`);
+            }
+            
+            // PM2.5
+            if (data.PM2 && data.PM2.value !== undefined) {
+                html += createDataCard('PM', 'icon-pm25', 'Particulate Matter', 
+                                      `PM2.5 ${data.PM2.value} μg/m³`);
+            }
+            
+            // Pressure
+            if (data.Pressure && data.Pressure.value !== undefined) {
+                html += createDataCard('🔄', 'icon-pressure', 'Pressure', 
+                                      `${data.Pressure.value} mb`);
+            }
+            
+            // Temperature
+            if (data.Temperature && data.Temperature.value !== undefined) {
+                html += createDataCard('🌡️', 'icon-temp', 'Temperature', 
+                                      `${data.Temperature.value} °C`);
             }
             
             container.innerHTML = html;
@@ -239,34 +276,23 @@
                 `Last updated: ${new Date().toLocaleTimeString()}`;
         }
         
-        // Function to fetch data from API
+        // Function to fetch data from Firebase API
         async function fetchData() {
             const container = document.getElementById('data-container');
-            container.innerHTML = '<div class="loading">Loading environmental data...</div>';
             
             try {
-                // OpenWeatherMap API key (free tier)
-                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                // Firebase Realtime Database URL
+                const apiUrl = 'https://ecology-55107-default-rtdb.asia-southeast1.firebasedatabase.app/.json';
                 
-                // Fetch weather data
-                const weatherResponse = await fetch(
-                    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}`
-                );
-                const weatherData = await weatherResponse.json();
+                // Fetch data from Firebase
+                const response = await fetch(apiUrl);
                 
-                // Fetch air quality data
-                const aqiResponse = await fetch(
-                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
-                );
-                const aqiData = await aqiResponse.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
-                // Combine the data
-                const combinedData = {
-                    ...weatherData,
-                    list: aqiData.list
-                };
-                
-                formatData(combinedData);
+                const data = await response.json();
+                formatData(data);
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -275,8 +301,37 @@
             }
         }
         
-        // Load data when page loads
-        window.onload = fetchData;
+        // Function to start the auto-refresh interval
+        function startAutoRefresh() {
+            // Clear any existing interval first
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            // Set a new interval to fetch data every 3 seconds (3000 milliseconds)
+            refreshInterval = setInterval(fetchData, 3000);
+        }
+        
+        // Function to restart the auto-refresh (used by the refresh button)
+        function restartAutoRefresh() {
+            // Clear existing interval
+            clearInterval(refreshInterval);
+            
+            // Fetch data immediately
+            fetchData();
+            
+            // Start the interval again
+            startAutoRefresh();
+        }
+        
+        // Initialize when page loads
+        window.onload = function() {
+            // Fetch data immediately on page load
+            fetchData();
+            
+            // Start auto-refresh
+            startAutoRefresh();
+        };
     </script>
 </body>
 </html>
