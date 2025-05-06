@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environmental Data Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .back-button {
+            margin-right: 15px;
+            color: #555;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        h1 {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .data-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .data-info {
+            flex-grow: 1;
+        }
+        
+        .data-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .data-value {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .icon-location { background-color: #4CAF50; color: white; }
+        .icon-co { background-color: #DEF2F1; color: #3AAFA9; }
+        .icon-nh3 { background-color: #FFFDE7; color: #FBC02D; }
+        .icon-humidity { background-color: #E1F5FE; color: #03A9F4; }
+        .icon-no2 { background-color: #FFEBEE; color: #F44336; }
+        .icon-pm25 { background-color: #ECEFF1; color: #607D8B; }
+        .icon-pressure { background-color: #EDE7F6; color: #673AB7; }
+        .icon-pm10 { background-color: #E0E0E0; color: #757575; }
+        .icon-temp { background-color: #FFF3E0; color: #FF9800; }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        .error-message {
+            color: #F44336;
+            text-align: center;
+            padding: 15px;
+            background-color: #FFEBEE;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .refresh-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .refresh-button:hover {
+            background-color: #3e8e41;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="back-button">&#8592;</div>
+        <h1>Location Data</h1>
+    </header>
+    
+    <div id="data-container">
+        <div class="loading">Loading environmental data...</div>
+    </div>
+
+    <button class="refresh-button" onclick="fetchData()">Refresh Data</button>
+    <button class="refresh-button" ><a href="graph.html"  style="text-decoration: none;color: white;">Visualize</a></button>
+    <div class="last-updated" id="last-updated"></div>
+    
+    <script>
+        // Default location coordinates (can be changed or made dynamic)
+        const lat = 13.70730;
+        const lon = 79.59450;
+        
+        // Template for each data card
+        function createDataCard(icon, bgClass, title, value) {
+            return `
+                <div class="data-card">
+                    <div class="icon ${bgClass}">${icon}</div>
+                    <div class="data-info">
+                        <div class="data-title">${title}</div>
+                        <div class="data-value">${value}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Function to format data for display
+        function formatData(data) {
+            // Update container with all the data cards
+            const container = document.getElementById('data-container');
+            
+            if (!data || !data.coord) {
+                container.innerHTML = '<div class="error-message">Error loading data. Please try again later.</div>';
+                return;
+            }
+            
+            // Format the data cards
+            let html = '';
+            
+            // Location
+            html += createDataCard('📍', 'icon-location', 'Location Coordinates', 
+                                   `Lat: ${data.coord.lat.toFixed(5)}, Lon: ${data.coord.lon.toFixed(5)}`);
+            
+            // Air Quality data
+            if (data.list && data.list[0] && data.list[0].components) {
+                const components = data.list[0].components;
+                
+                // Carbon Monoxide
+                if (components.co !== undefined) {
+                    html += createDataCard('CO', 'icon-co', 'Carbon Monoxide', 
+                                           `CO ${components.co.toFixed(2)} mg/m³`);
+                }
+                
+                // Ammonia
+                if (components.nh3 !== undefined) {
+                    html += createDataCard('NH₃', 'icon-nh3', 'Ammonia', 
+                                          `NH₃ ${components.nh3.toFixed(2)} μg/m³`);
+                }
+                
+                // Nitrogen Dioxide
+                if (components.no2 !== undefined) {
+                    html += createDataCard('NO₂', 'icon-no2', 'Nitrogen Dioxide', 
+                                          `NO₂ ${components.no2.toFixed(2)} μg/m³`);
+                }
+                
+                // PM2.5
+                if (components.pm2_5 !== undefined) {
+                    html += createDataCard('PM', 'icon-pm25', 'Particulate Matter', 
+                                          `PM2.5 ${components.pm2_5.toFixed(2)} μg/m³`);
+                }
+                
+                // PM10
+                if (components.pm10 !== undefined) {
+                    html += createDataCard('PM', 'icon-pm10', 'Particulate Matter', 
+                                          `PM10 ${components.pm10.toFixed(2)} μg/m³`);
+                }
+            }
+            
+            // Weather data
+            if (data.main) {
+                // Temperature
+                if (data.main.temp !== undefined) {
+                    const tempC = data.main.temp - 273.15; // Convert from Kelvin to Celsius
+                    html += createDataCard('🌡️', 'icon-temp', 'Temperature', 
+                                          `${tempC.toFixed(2)} °C`);
+                }
+                
+                // Humidity
+                if (data.main.humidity !== undefined) {
+                    html += createDataCard('💧', 'icon-humidity', 'Humidity', 
+                                          `${data.main.humidity}%`);
+                }
+                
+                // Pressure
+                if (data.main.pressure !== undefined) {
+                    html += createDataCard('🔄', 'icon-pressure', 'Pressure', 
+                                          `${data.main.pressure} mb`);
+                }
+            }
+            
+            container.innerHTML = html;
+            
+            // Update the last updated time
+            document.getElementById('last-updated').innerText = 
+                `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+        
+        // Function to fetch data from API
+        async function fetchData() {
+            const container = document.getElementById('data-container');
+            container.innerHTML = '<div class="loading">Loading environmental data...</div>';
+            
+            try {
+                // OpenWeatherMap API key (free tier)
+                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                
+                // Fetch weather data
+                const weatherResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}`
+                );
+                const weatherData = await weatherResponse.json();
+                
+                // Fetch air quality data
+                const aqiResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
+                );
+                const aqiData = await aqiResponse.json();
+                
+                // Combine the data
+                const combinedData = {
+                    ...weatherData,
+                    list: aqiData.list
+                };
+                
+                formatData(combinedData);
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                container.innerHTML = 
+                    '<div class="error-message">Error fetching data. Please check your connection and try again.</div>';
+            }
+        }
+        
+        // Load data when page loads
+        window.onload = fetchData;
+    </script>
+</body>
+</html>

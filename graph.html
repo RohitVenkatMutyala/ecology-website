@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environmental Data Graphs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .back-button {
+            margin-right: 15px;
+            color: #555;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        h1 {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .chart-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .aqi-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .aqi-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .aqi-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .aqi-description {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .aqi-scale {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
+        .aqi-category {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
+            font-size: 12px;
+            color: white;
+        }
+        
+        .good { background-color: #00E400; }
+        .moderate { background-color: #FFFF00; color: #333; }
+        .unhealthy-sensitive { background-color: #FF7E00; }
+        .unhealthy { background-color: #FF0000; }
+        .very-unhealthy { background-color: #8F3F97; }
+        .hazardous { background-color: #7E0023; }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .nav-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .nav-button:hover {
+            background-color: #3e8e41;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .error-message {
+            color: #F44336;
+            text-align: center;
+            padding: 15px;
+            background-color: #FFEBEE;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .refresh-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .refresh-button:hover {
+            background-color: #3e8e41;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .historical-chart {
+            height: 300px;
+        }
+
+        @media (min-width: 768px) {
+            .charts-row {
+                display: flex;
+                gap: 20px;
+            }
+            
+            .charts-row .chart-container {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="back-button">&#8592;</div>
+        <h1>Environmental Data Graphs</h1>
+    </header>
+    
+    <div class="nav-buttons">
+        <a href="index.html" class="nav-button">Dashboard View</a>
+       
+    </div>
+    
+    <div class="aqi-container" id="aqi-display">
+        <div class="loading">Calculating Air Quality Index...</div>
+    </div>
+    
+    <div class="charts-row">
+        <div class="chart-container">
+            <div class="chart-title">Particulate Matter</div>
+            <canvas id="pmChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Gases</div>
+            <canvas id="gasesChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <div class="chart-title">Weather Parameters</div>
+        <canvas id="weatherChart"></canvas>
+    </div>
+    
+    <div class="chart-container">
+        <div class="chart-title">Historical AQI (24 hours)</div>
+        <canvas id="historicalChart" class="historical-chart"></canvas>
+    </div>
+    
+    <button class="refresh-button" onclick="fetchData()">Refresh Data</button>
+    <div class="last-updated" id="last-updated"></div>
+    
+    <script>
+        // Default location coordinates (same as on dashboard page)
+        const lat = 13.70730;
+        const lon = 79.59450;
+        
+        // Chart objects
+        let pmChart, gasesChart, weatherChart, historicalChart;
+        
+        // Store historical data (simulated in this demo)
+        const historicalData = {
+            times: [],
+            aqi: []
+        };
+        
+        // Calculate AQI based on pollutant concentrations
+        function calculateAQI(components) {
+            // AQI calculation based on EPA standards
+            // This is a simplified version for demonstration
+            
+            // PM2.5 AQI calculation
+            let pm25_aqi = calculatePM25AQI(components.pm2_5);
+            
+            // PM10 AQI calculation
+            let pm10_aqi = calculatePM10AQI(components.pm10);
+            
+            // NO2 AQI calculation
+            let no2_aqi = calculateNO2AQI(components.no2);
+            
+            // Return the highest AQI value
+            let aqi = Math.max(pm25_aqi, pm10_aqi, no2_aqi);
+            return Math.round(aqi);
+        }
+        
+        // PM2.5 AQI calculation (simplified)
+        function calculatePM25AQI(pm25) {
+            if (pm25 <= 12.0) {
+                return linearScale(pm25, 0, 12.0, 0, 50);
+            } else if (pm25 <= 35.4) {
+                return linearScale(pm25, 12.1, 35.4, 51, 100);
+            } else if (pm25 <= 55.4) {
+                return linearScale(pm25, 35.5, 55.4, 101, 150);
+            } else if (pm25 <= 150.4) {
+                return linearScale(pm25, 55.5, 150.4, 151, 200);
+            } else if (pm25 <= 250.4) {
+                return linearScale(pm25, 150.5, 250.4, 201, 300);
+            } else if (pm25 <= 500.4) {
+                return linearScale(pm25, 250.5, 500.4, 301, 500);
+            } else {
+                return 500;
+            }
+        }
+        
+        // PM10 AQI calculation (simplified)
+        function calculatePM10AQI(pm10) {
+            if (pm10 <= 54) {
+                return linearScale(pm10, 0, 54, 0, 50);
+            } else if (pm10 <= 154) {
+                return linearScale(pm10, 55, 154, 51, 100);
+            } else if (pm10 <= 254) {
+                return linearScale(pm10, 155, 254, 101, 150);
+            } else if (pm10 <= 354) {
+                return linearScale(pm10, 255, 354, 151, 200);
+            } else if (pm10 <= 424) {
+                return linearScale(pm10, 355, 424, 201, 300);
+            } else if (pm10 <= 604) {
+                return linearScale(pm10, 425, 604, 301, 500);
+            } else {
+                return 500;
+            }
+        }
+        
+        // NO2 AQI calculation (simplified)
+        function calculateNO2AQI(no2) {
+            // Convert from μg/m³ to ppb (approximate conversion)
+            let no2_ppb = no2 * 0.532;
+            
+            if (no2_ppb <= 53) {
+                return linearScale(no2_ppb, 0, 53, 0, 50);
+            } else if (no2_ppb <= 100) {
+                return linearScale(no2_ppb, 54, 100, 51, 100);
+            } else if (no2_ppb <= 360) {
+                return linearScale(no2_ppb, 101, 360, 101, 150);
+            } else if (no2_ppb <= 649) {
+                return linearScale(no2_ppb, 361, 649, 151, 200);
+            } else if (no2_ppb <= 1249) {
+                return linearScale(no2_ppb, 650, 1249, 201, 300);
+            } else if (no2_ppb <= 2049) {
+                return linearScale(no2_ppb, 1250, 2049, 301, 500);
+            } else {
+                return 500;
+            }
+        }
+        
+        // Linear scale function for AQI calculation
+        function linearScale(value, inMin, inMax, outMin, outMax) {
+            return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
+        }
+        
+        // Get AQI category and color
+        function getAQICategory(aqi) {
+            if (aqi <= 50) {
+                return { category: "Good", color: "#00E400", description: "Air quality is satisfactory, and air pollution poses little or no risk." };
+            } else if (aqi <= 100) {
+                return { category: "Moderate", color: "#FFFF00", description: "Air quality is acceptable. However, there may be a risk for some people." };
+            } else if (aqi <= 150) {
+                return { category: "Unhealthy for Sensitive Groups", color: "#FF7E00", description: "Members of sensitive groups may experience health effects." };
+            } else if (aqi <= 200) {
+                return { category: "Unhealthy", color: "#FF0000", description: "Some members of the general public may experience health effects." };
+            } else if (aqi <= 300) {
+                return { category: "Very Unhealthy", color: "#8F3F97", description: "Health alert: The risk of health effects is increased for everyone." };
+            } else {
+                return { category: "Hazardous", color: "#7E0023", description: "Health warning of emergency conditions: everyone is more likely to be affected." };
+            }
+        }
+        
+        // Update AQI display
+        function updateAQIDisplay(aqi) {
+            const aqiInfo = getAQICategory(aqi);
+            const aqiContainer = document.getElementById('aqi-display');
+            
+            aqiContainer.innerHTML = `
+                <div class="aqi-title">Air Quality Index</div>
+                <div class="aqi-value" style="color: ${aqiInfo.color}">${aqi}</div>
+                <div class="aqi-description">${aqiInfo.category}</div>
+                <div>${aqiInfo.description}</div>
+                <div class="aqi-scale">
+                    <div class="aqi-category good">Good<br>0-50</div>
+                    <div class="aqi-category moderate">Moderate<br>51-100</div>
+                    <div class="aqi-category unhealthy-sensitive">Unhealthy for Sensitive Groups<br>101-150</div>
+                    <div class="aqi-category unhealthy">Unhealthy<br>151-200</div>
+                    <div class="aqi-category very-unhealthy">Very Unhealthy<br>201-300</div>
+                    <div class="aqi-category hazardous">Hazardous<br>301+</div>
+                </div>
+            `;
+        }
+        
+        // Create and update the PM chart
+        function updatePMChart(data) {
+            const ctx = document.getElementById('pmChart').getContext('2d');
+            
+            if (pmChart) {
+                pmChart.destroy();
+            }
+            
+            pmChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['PM2.5', 'PM10'],
+                    datasets: [{
+                        label: 'Concentration (μg/m³)',
+                        data: [data.components.pm2_5, data.components.pm10],
+                        backgroundColor: [
+                            'rgba(96, 125, 139, 0.7)',
+                            'rgba(158, 158, 158, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(96, 125, 139, 1)',
+                            'rgba(158, 158, 158, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'μg/m³'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const index = context.dataIndex;
+                                    const value = context.dataset.data[index];
+                                    if (index === 0) { // PM2.5
+                                        const aqi = calculatePM25AQI(value);
+                                        return `AQI: ${Math.round(aqi)} (${getAQICategory(aqi).category})`;
+                                    } else { // PM10
+                                        const aqi = calculatePM10AQI(value);
+                                        return `AQI: ${Math.round(aqi)} (${getAQICategory(aqi).category})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create and update the gases chart
+        function updateGasesChart(data) {
+            const ctx = document.getElementById('gasesChart').getContext('2d');
+            
+            if (gasesChart) {
+                gasesChart.destroy();
+            }
+            
+            gasesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['CO (mg/m³)', 'NO₂ (μg/m³)', 'NH₃ (μg/m³)'],
+                    datasets: [{
+                        label: 'Concentration',
+                        data: [data.components.co, data.components.no2, data.components.nh3],
+                        backgroundColor: [
+                            'rgba(58, 175, 169, 0.7)',
+                            'rgba(244, 67, 54, 0.7)',
+                            'rgba(251, 192, 45, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(58, 175, 169, 1)',
+                            'rgba(244, 67, 54, 1)',
+                            'rgba(251, 192, 45, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create and update the weather chart
+        function updateWeatherChart(weatherData) {
+            const ctx = document.getElementById('weatherChart').getContext('2d');
+            const tempC = weatherData.main.temp - 273.15; // Convert from Kelvin to Celsius
+            
+            if (weatherChart) {
+                weatherChart.destroy();
+            }
+            
+            weatherChart = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Temperature (°C)', 'Humidity (%)', 'Pressure (mb/10)'],
+                    datasets: [{
+                        data: [tempC, weatherData.main.humidity, weatherData.main.pressure/10],
+                        backgroundColor: [
+                            'rgba(255, 152, 0, 0.7)',
+                            'rgba(3, 169, 244, 0.7)',
+                            'rgba(103, 58, 183, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 152, 0, 1)',
+                            'rgba(3, 169, 244, 1)',
+                            'rgba(103, 58, 183, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            ticks: {
+                                backdropColor: 'rgba(0, 0, 0, 0)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw;
+                                    
+                                    if (label === 'Temperature (°C)') {
+                                        return `Temperature: ${value.toFixed(2)} °C`;
+                                    } else if (label === 'Humidity (%)') {
+                                        return `Humidity: ${value}%`;
+                                    } else if (label === 'Pressure (mb/10)') {
+                                        return `Pressure: ${value * 10} mb`;
+                                    } else {
+                                        return `${label}: ${value}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update the historical chart
+        function updateHistoricalChart(newAqi) {
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            
+            // Get current time
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Add new data point
+            historicalData.times.push(timeStr);
+            historicalData.aqi.push(newAqi);
+            
+            // Keep only the last 24 entries (or fewer if we haven't reached 24 yet)
+            if (historicalData.times.length > 24) {
+                historicalData.times.shift();
+                historicalData.aqi.shift();
+            }
+            
+            if (historicalChart) {
+                historicalChart.destroy();
+            }
+            
+            // Create gradient for background
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(76, 175, 80, 0.6)');
+            gradient.addColorStop(1, 'rgba(76, 175, 80, 0.1)');
+            
+            historicalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: historicalData.times,
+                    datasets: [{
+                        label: 'AQI',
+                        data: historicalData.aqi,
+                        fill: true,
+                        backgroundColor: gradient,
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(76, 175, 80, 1)',
+                        pointBorderColor: '#fff',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 200,
+                            title: {
+                                display: true,
+                                text: 'AQI Value'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const aqi = context.raw;
+                                    return getAQICategory(aqi).category;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Function to generate some random historical data for demonstration
+        function generateHistoricalData(currentAqi) {
+            // Clear existing data
+            historicalData.times = [];
+            historicalData.aqi = [];
+            
+            const now = new Date();
+            
+            // Generate 24 hours of data (one entry per hour)
+            for (let i = 23; i >= 0; i--) {
+                const time = new Date(now);
+                time.setHours(time.getHours() - i);
+                
+                // Format time as HH:MM
+                const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                // Generate a random AQI close to the current value with some variation
+                const variation = Math.random() * 30 - 15; // +/- 15
+                const aqi = Math.max(0, Math.round(currentAqi + variation));
+                
+                historicalData.times.push(timeStr);
+                historicalData.aqi.push(aqi);
+            }
+        }
+        
+        // Function to fetch data from API
+        async function fetchData() {
+            try {
+                // OpenWeatherMap API key (free tier)
+                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                
+                // Fetch weather data
+                const weatherResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}`
+                );
+                const weatherData = await weatherResponse.json();
+                
+                // Fetch air quality data
+                const aqiResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
+                );
+                const aqiData = await aqiResponse.json();
+                
+                if (aqiData.list && aqiData.list[0]) {
+                    const pollution = aqiData.list[0];
+                    
+                    // Calculate AQI
+                    const aqi = calculateAQI(pollution.components);
+                    
+                    // Update AQI display
+                    updateAQIDisplay(aqi);
+                    
+                    // Update charts
+                    updatePMChart(pollution);
+                    updateGasesChart(pollution);
+                    updateWeatherChart(weatherData);
+                    
+                    // For first load, generate some historical data
+                    if (historicalData.times.length === 0) {
+                        generateHistoricalData(aqi);
+                    }
+                    
+                    // Update historical chart
+                    updateHistoricalChart(aqi);
+                    
+                    // Update last updated time
+                    document.getElementById('last-updated').innerText = 
+                        `Last updated: ${new Date().toLocaleTimeString()}`;
+                } else {
+                    throw new Error('No air quality data available');
+                }
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('aqi-display').innerHTML = 
+                    '<div class="error-message">Error fetching data. Please check your connection and try again.</div>';
+            }
+        }
+        
+        // Load data when page loads
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
