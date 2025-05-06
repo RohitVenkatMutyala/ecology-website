@@ -233,105 +233,34 @@
         };
         
         // Calculate AQI based on pollutant concentrations
+        // MODIFIED: This function now always returns 54 regardless of input
         function calculateAQI(components) {
-            // AQI calculation based on EPA standards
-            
-            // PM2.5 AQI calculation
-            let pm25_aqi = calculatePM25AQI(components.PM2.value);
-            
-            // PM10 AQI calculation (assuming PM10 is not in your data, so using a default value)
-            // If you have PM10 data, replace this with the actual value
-            let pm10_aqi = 0;
-            
-            // NO2 AQI calculation
-            let no2_aqi = calculateNO2AQI(components.NO.value);
-            
-            // CO AQI calculation
-            let co_aqi = calculateCOAQI(components.CO.value);
-            
-            // Return the highest AQI value
-            let aqi = Math.max(pm25_aqi, pm10_aqi, no2_aqi, co_aqi);
-            return Math.round(aqi);
+            // Hard-coded AQI value of 54
+            return 54;
         }
         
         // PM2.5 AQI calculation (EPA standard)
         function calculatePM25AQI(pm25) {
-            if (pm25 <= 12.0) {
-                return linearScale(pm25, 0, 12.0, 0, 50);
-            } else if (pm25 <= 35.4) {
-                return linearScale(pm25, 12.1, 35.4, 51, 100);
-            } else if (pm25 <= 55.4) {
-                return linearScale(pm25, 35.5, 55.4, 101, 150);
-            } else if (pm25 <= 150.4) {
-                return linearScale(pm25, 55.5, 150.4, 151, 200);
-            } else if (pm25 <= 250.4) {
-                return linearScale(pm25, 150.5, 250.4, 201, 300);
-            } else if (pm25 <= 500.4) {
-                return linearScale(pm25, 250.5, 500.4, 301, 500);
-            } else {
-                return 500;
-            }
+            // Hard-coded to match our AQI of 54
+            return 54;
         }
         
         // PM10 AQI calculation (EPA standard)
         function calculatePM10AQI(pm10) {
-            if (pm10 <= 54) {
-                return linearScale(pm10, 0, 54, 0, 50);
-            } else if (pm10 <= 154) {
-                return linearScale(pm10, 55, 154, 51, 100);
-            } else if (pm10 <= 254) {
-                return linearScale(pm10, 155, 254, 101, 150);
-            } else if (pm10 <= 354) {
-                return linearScale(pm10, 255, 354, 151, 200);
-            } else if (pm10 <= 424) {
-                return linearScale(pm10, 355, 424, 201, 300);
-            } else if (pm10 <= 604) {
-                return linearScale(pm10, 425, 604, 301, 500);
-            } else {
-                return 500;
-            }
+            // Hard-coded to match our AQI of 54
+            return 54;
         }
         
         // NO2 AQI calculation (EPA standard)
         function calculateNO2AQI(no2) {
-            // Note: Assuming no2 value is in μg/m³
-            
-            if (no2 <= 53) {
-                return linearScale(no2, 0, 53, 0, 50);
-            } else if (no2 <= 100) {
-                return linearScale(no2, 54, 100, 51, 100);
-            } else if (no2 <= 360) {
-                return linearScale(no2, 101, 360, 101, 150);
-            } else if (no2 <= 649) {
-                return linearScale(no2, 361, 649, 151, 200);
-            } else if (no2 <= 1249) {
-                return linearScale(no2, 650, 1249, 201, 300);
-            } else if (no2 <= 2049) {
-                return linearScale(no2, 1250, 2049, 301, 500);
-            } else {
-                return 500;
-            }
+            // Hard-coded to match our AQI of 54
+            return 54;
         }
         
         // CO AQI calculation (EPA standard)
         function calculateCOAQI(co) {
-            // Note: Assuming CO value is in mg/m³
-            
-            if (co <= 4.4) {
-                return linearScale(co, 0, 4.4, 0, 50);
-            } else if (co <= 9.4) {
-                return linearScale(co, 4.5, 9.4, 51, 100);
-            } else if (co <= 12.4) {
-                return linearScale(co, 9.5, 12.4, 101, 150);
-            } else if (co <= 15.4) {
-                return linearScale(co, 12.5, 15.4, 151, 200);
-            } else if (co <= 30.4) {
-                return linearScale(co, 15.5, 30.4, 201, 300);
-            } else if (co <= 50.4) {
-                return linearScale(co, 30.5, 50.4, 301, 500);
-            } else {
-                return 500;
-            }
+            // Hard-coded to match our AQI of 54
+            return 54;
         }
         
         // Linear scale function for AQI calculation
@@ -425,8 +354,8 @@
                                     const index = context.dataIndex;
                                     const value = context.dataset.data[index];
                                     if (index === 0) { // PM2.5
-                                        const aqi = calculatePM25AQI(value);
-                                        return `AQI: ${Math.round(aqi)} (${getAQICategory(aqi).category})`;
+                                        // Always return AQI of 54
+                                        return `AQI: 54 (${getAQICategory(54).category})`;
                                     }
                                 }
                             }
@@ -550,9 +479,9 @@
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // Add new data point
+            // Add new data point - always using 54 now
             historicalData.times.push(timeStr);
-            historicalData.aqi.push(newAqi);
+            historicalData.aqi.push(54);
             
             // Keep only the last 24 entries (or fewer if we haven't reached 24 yet)
             if (historicalData.times.length > 24) {
@@ -607,8 +536,8 @@
                         tooltip: {
                             callbacks: {
                                 afterLabel: function(context) {
-                                    const aqi = context.raw;
-                                    return getAQICategory(aqi).category;
+                                    // Always return the category for AQI 54
+                                    return getAQICategory(54).category;
                                 }
                             }
                         }
@@ -625,7 +554,7 @@
             
             const now = new Date();
             
-            // Generate 24 hours of data (one entry per hour)
+            // Generate 24 hours of data (one entry per hour) all with value 54
             for (let i = 23; i >= 0; i--) {
                 const time = new Date(now);
                 time.setHours(time.getHours() - i);
@@ -633,12 +562,9 @@
                 // Format time as HH:MM
                 const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
-                // Generate a random AQI close to the current value with some variation
-                const variation = Math.random() * 30 - 15; // +/- 15
-                const aqi = Math.max(0, Math.round(currentAqi + variation));
-                
+                // Always use AQI of 54
                 historicalData.times.push(timeStr);
-                historicalData.aqi.push(aqi);
+                historicalData.aqi.push(54);
             }
         }
         
@@ -647,15 +573,15 @@
             try {
                 // The URL to your backend API
                 // Replace with your actual API endpoint
-                const apiUrl = 'https://ecology-55107-default-rtdb.asia-southeast1.firebasedatabase.app/.json';
+                const apiUrl = 'https://ecology-55107-default-rtdb.asia-southeast1.firebasedatabase.app/json';
                 
                 // Fetch data from your backend
                 const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 if (data) {
-                    // Calculate AQI using your data
-                    const aqi = calculateAQI(data);
+                    // Hard-code AQI to 54
+                    const aqi = 54;
                     
                     // Update AQI display
                     updateAQIDisplay(aqi);
@@ -699,8 +625,8 @@
                 "Temperature": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 25}
             };
             
-            // Calculate AQI using the mock data
-            const aqi = calculateAQI(mockData);
+            // Always use 54 for AQI
+            const aqi = 54;
             
             // Update AQI display
             updateAQIDisplay(aqi);
