@@ -183,13 +183,11 @@
 </head>
 <body>
     <header>
-        
         <h1>Environmental Data Graphs</h1>
     </header>
     
     <div class="nav-buttons">
         <a href="index.html" class="nav-button">Dashboard View</a>
-       
     </div>
     
     <div class="aqi-container" id="aqi-display">
@@ -221,9 +219,9 @@
     <div class="last-updated" id="last-updated"></div>
     
     <script>
-        // Default location coordinates (same as on dashboard page)
-        const lat = 13.70730;
-        const lon = 79.59450;
+        // Default location coordinates (from your JSON data)
+        const lat = 13.714710;
+        const lon = 79.590874;
         
         // Chart objects
         let pmChart, gasesChart, weatherChart, historicalChart;
@@ -237,23 +235,26 @@
         // Calculate AQI based on pollutant concentrations
         function calculateAQI(components) {
             // AQI calculation based on EPA standards
-            // This is a simplified version for demonstration
             
             // PM2.5 AQI calculation
-            let pm25_aqi = calculatePM25AQI(components.pm2_5);
+            let pm25_aqi = calculatePM25AQI(components.PM2.value);
             
-            // PM10 AQI calculation
-            let pm10_aqi = calculatePM10AQI(components.pm10);
+            // PM10 AQI calculation (assuming PM10 is not in your data, so using a default value)
+            // If you have PM10 data, replace this with the actual value
+            let pm10_aqi = 0;
             
             // NO2 AQI calculation
-            let no2_aqi = calculateNO2AQI(components.no2);
+            let no2_aqi = calculateNO2AQI(components.NO.value);
+            
+            // CO AQI calculation
+            let co_aqi = calculateCOAQI(components.CO.value);
             
             // Return the highest AQI value
-            let aqi = Math.max(pm25_aqi, pm10_aqi, no2_aqi);
+            let aqi = Math.max(pm25_aqi, pm10_aqi, no2_aqi, co_aqi);
             return Math.round(aqi);
         }
         
-        // PM2.5 AQI calculation (simplified)
+        // PM2.5 AQI calculation (EPA standard)
         function calculatePM25AQI(pm25) {
             if (pm25 <= 12.0) {
                 return linearScale(pm25, 0, 12.0, 0, 50);
@@ -272,7 +273,7 @@
             }
         }
         
-        // PM10 AQI calculation (simplified)
+        // PM10 AQI calculation (EPA standard)
         function calculatePM10AQI(pm10) {
             if (pm10 <= 54) {
                 return linearScale(pm10, 0, 54, 0, 50);
@@ -291,23 +292,43 @@
             }
         }
         
-        // NO2 AQI calculation (simplified)
+        // NO2 AQI calculation (EPA standard)
         function calculateNO2AQI(no2) {
-            // Convert from μg/m³ to ppb (approximate conversion)
-            let no2_ppb = no2 * 0.532;
+            // Note: Assuming no2 value is in μg/m³
             
-            if (no2_ppb <= 53) {
-                return linearScale(no2_ppb, 0, 53, 0, 50);
-            } else if (no2_ppb <= 100) {
-                return linearScale(no2_ppb, 54, 100, 51, 100);
-            } else if (no2_ppb <= 360) {
-                return linearScale(no2_ppb, 101, 360, 101, 150);
-            } else if (no2_ppb <= 649) {
-                return linearScale(no2_ppb, 361, 649, 151, 200);
-            } else if (no2_ppb <= 1249) {
-                return linearScale(no2_ppb, 650, 1249, 201, 300);
-            } else if (no2_ppb <= 2049) {
-                return linearScale(no2_ppb, 1250, 2049, 301, 500);
+            if (no2 <= 53) {
+                return linearScale(no2, 0, 53, 0, 50);
+            } else if (no2 <= 100) {
+                return linearScale(no2, 54, 100, 51, 100);
+            } else if (no2 <= 360) {
+                return linearScale(no2, 101, 360, 101, 150);
+            } else if (no2 <= 649) {
+                return linearScale(no2, 361, 649, 151, 200);
+            } else if (no2 <= 1249) {
+                return linearScale(no2, 650, 1249, 201, 300);
+            } else if (no2 <= 2049) {
+                return linearScale(no2, 1250, 2049, 301, 500);
+            } else {
+                return 500;
+            }
+        }
+        
+        // CO AQI calculation (EPA standard)
+        function calculateCOAQI(co) {
+            // Note: Assuming CO value is in mg/m³
+            
+            if (co <= 4.4) {
+                return linearScale(co, 0, 4.4, 0, 50);
+            } else if (co <= 9.4) {
+                return linearScale(co, 4.5, 9.4, 51, 100);
+            } else if (co <= 12.4) {
+                return linearScale(co, 9.5, 12.4, 101, 150);
+            } else if (co <= 15.4) {
+                return linearScale(co, 12.5, 15.4, 151, 200);
+            } else if (co <= 30.4) {
+                return linearScale(co, 15.5, 30.4, 201, 300);
+            } else if (co <= 50.4) {
+                return linearScale(co, 30.5, 50.4, 301, 500);
             } else {
                 return 500;
             }
@@ -360,6 +381,13 @@
         function updatePMChart(data) {
             const ctx = document.getElementById('pmChart').getContext('2d');
             
+            // Extract PM2.5 value from your data
+            const pm25 = data.PM2.value;
+            
+            // Extract PM10 value from your data (if it exists)
+            // Using a placeholder value since PM10 doesn't appear in your JSON
+            const pm10 = 0;
+            
             if (pmChart) {
                 pmChart.destroy();
             }
@@ -367,17 +395,15 @@
             pmChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['PM2.5', 'PM10'],
+                    labels: ['PM2.5'],
                     datasets: [{
                         label: 'Concentration (μg/m³)',
-                        data: [data.components.pm2_5, data.components.pm10],
+                        data: [pm25],
                         backgroundColor: [
-                            'rgba(96, 125, 139, 0.7)',
-                            'rgba(158, 158, 158, 0.7)'
+                            'rgba(96, 125, 139, 0.7)'
                         ],
                         borderColor: [
-                            'rgba(96, 125, 139, 1)',
-                            'rgba(158, 158, 158, 1)'
+                            'rgba(96, 125, 139, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -401,9 +427,6 @@
                                     if (index === 0) { // PM2.5
                                         const aqi = calculatePM25AQI(value);
                                         return `AQI: ${Math.round(aqi)} (${getAQICategory(aqi).category})`;
-                                    } else { // PM10
-                                        const aqi = calculatePM10AQI(value);
-                                        return `AQI: ${Math.round(aqi)} (${getAQICategory(aqi).category})`;
                                     }
                                 }
                             }
@@ -417,6 +440,11 @@
         function updateGasesChart(data) {
             const ctx = document.getElementById('gasesChart').getContext('2d');
             
+            // Extract gas values from your data
+            const co = data.CO.value;
+            const no = data.NO.value;
+            const nh3 = data.NH3.value;
+            
             if (gasesChart) {
                 gasesChart.destroy();
             }
@@ -424,10 +452,10 @@
             gasesChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['CO (mg/m³)', 'NO₂ (μg/m³)', 'NH₃ (μg/m³)'],
+                    labels: ['CO', 'NO', 'NH₃'],
                     datasets: [{
-                        label: 'Concentration',
-                        data: [data.components.co, data.components.no2, data.components.nh3],
+                        label: 'Concentration (μg/m³)',
+                        data: [co, no, nh3],
                         backgroundColor: [
                             'rgba(58, 175, 169, 0.7)',
                             'rgba(244, 67, 54, 0.7)',
@@ -444,7 +472,11 @@
                 options: {
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Concentration'
+                            }
                         }
                     }
                 }
@@ -452,9 +484,12 @@
         }
         
         // Create and update the weather chart
-        function updateWeatherChart(weatherData) {
+        function updateWeatherChart(data) {
             const ctx = document.getElementById('weatherChart').getContext('2d');
-            const tempC = weatherData.main.temp - 273.15; // Convert from Kelvin to Celsius
+            
+            // Extract weather values from your data
+            const temperature = data.Temperature.value;
+            const pressure = data.Pressure.value;
             
             if (weatherChart) {
                 weatherChart.destroy();
@@ -463,17 +498,15 @@
             weatherChart = new Chart(ctx, {
                 type: 'polarArea',
                 data: {
-                    labels: ['Temperature (°C)', 'Humidity (%)', 'Pressure (mb/10)'],
+                    labels: ['Temperature (°C)', 'Pressure (mb/10)'],
                     datasets: [{
-                        data: [tempC, weatherData.main.humidity, weatherData.main.pressure/10],
+                        data: [temperature, pressure/10],
                         backgroundColor: [
                             'rgba(255, 152, 0, 0.7)',
-                            'rgba(3, 169, 244, 0.7)',
                             'rgba(103, 58, 183, 0.7)'
                         ],
                         borderColor: [
                             'rgba(255, 152, 0, 1)',
-                            'rgba(3, 169, 244, 1)',
                             'rgba(103, 58, 183, 1)'
                         ],
                         borderWidth: 1
@@ -496,8 +529,6 @@
                                     
                                     if (label === 'Temperature (°C)') {
                                         return `Temperature: ${value.toFixed(2)} °C`;
-                                    } else if (label === 'Humidity (%)') {
-                                        return `Humidity: ${value}%`;
                                     } else if (label === 'Pressure (mb/10)') {
                                         return `Pressure: ${value * 10} mb`;
                                     } else {
@@ -611,37 +642,28 @@
             }
         }
         
-        // Function to fetch data from API
+        // Function to fetch data from your backend API
         async function fetchData() {
             try {
-                // OpenWeatherMap API key (free tier)
-                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                // The URL to your backend API
+                // Replace with your actual API endpoint
+                const apiUrl = 'https://ecology-55107-default-rtdb.asia-southeast1.firebasedatabase.app/.json';
                 
-                // Fetch weather data
-                const weatherResponse = await fetch(
-                    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}`
-                );
-                const weatherData = await weatherResponse.json();
+                // Fetch data from your backend
+                const response = await fetch(apiUrl);
+                const data = await response.json();
                 
-                // Fetch air quality data
-                const aqiResponse = await fetch(
-                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`
-                );
-                const aqiData = await aqiResponse.json();
-                
-                if (aqiData.list && aqiData.list[0]) {
-                    const pollution = aqiData.list[0];
-                    
-                    // Calculate AQI
-                    const aqi = calculateAQI(pollution.components);
+                if (data) {
+                    // Calculate AQI using your data
+                    const aqi = calculateAQI(data);
                     
                     // Update AQI display
                     updateAQIDisplay(aqi);
                     
                     // Update charts
-                    updatePMChart(pollution);
-                    updateGasesChart(pollution);
-                    updateWeatherChart(weatherData);
+                    updatePMChart(data);
+                    updateGasesChart(data);
+                    updateWeatherChart(data);
                     
                     // For first load, generate some historical data
                     if (historicalData.times.length === 0) {
@@ -655,7 +677,7 @@
                     document.getElementById('last-updated').innerText = 
                         `Last updated: ${new Date().toLocaleTimeString()}`;
                 } else {
-                    throw new Error('No air quality data available');
+                    throw new Error('No data available');
                 }
                 
             } catch (error) {
@@ -665,8 +687,50 @@
             }
         }
         
+        // For testing without an actual API connection
+        function loadMockData() {
+            // Mock data matching your Firebase structure
+            const mockData = {
+                "CO": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 31},
+                "NO": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 188},
+                "NH3": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 67},
+                "PM2": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 3},
+                "Pressure": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 998},
+                "Temperature": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 25}
+            };
+            
+            // Calculate AQI using the mock data
+            const aqi = calculateAQI(mockData);
+            
+            // Update AQI display
+            updateAQIDisplay(aqi);
+            
+            // Update charts
+            updatePMChart(mockData);
+            updateGasesChart(mockData);
+            updateWeatherChart(mockData);
+            
+            // For first load, generate some historical data
+            if (historicalData.times.length === 0) {
+                generateHistoricalData(aqi);
+            }
+            
+            // Update historical chart
+            updateHistoricalChart(aqi);
+            
+            // Update last updated time
+            document.getElementById('last-updated').innerText = 
+                `Last updated: ${new Date().toLocaleTimeString()} (MOCK DATA)`;
+        }
+        
         // Load data when page loads
-        window.onload = fetchData;
+        window.onload = function() {
+            // Uncomment the line below to use mock data for testing
+            // loadMockData();
+            
+            // Use this for real API connection
+            fetchData();
+        };
     </script>
 </body>
 </html>
