@@ -95,6 +95,7 @@
             padding: 5px;
             font-size: 12px;
             color: white;
+            width:0.5rem;
         }
         
         .good { background-color: #00E400; }
@@ -207,7 +208,7 @@
     
     <div class="chart-container">
         <div class="chart-title">Weather Parameters</div>
-        <canvas id="weatherChart"></canvas>
+        <canvas id="weatherChart"  ></canvas>
     </div>
     
     <div class="chart-container">
@@ -219,72 +220,138 @@
     <div class="last-updated" id="last-updated"></div>
     
     <script>
-        // Default location coordinates (from your JSON data)
+        // Default location coordinates
         const lat = 13.714710;
         const lon = 79.590874;
         
         // Chart objects
         let pmChart, gasesChart, weatherChart, historicalChart;
         
-        // Store historical data (simulated in this demo)
+        // Store historical data
         const historicalData = {
             times: [],
             aqi: []
         };
         
-        // Calculate AQI based on pollutant concentrations
-        // MODIFIED: This function now always returns 54 regardless of input
-        function calculateAQI(components) {
-            // Hard-coded AQI value of 54
-            return 54;
+     // Updated AQI Calculation Functions for Air Quality Monitoring
+
+// PM2.5 AQI breakpoints as per CPCB guidelines - India
+const PM25_BREAKPOINTS = [
+    { bpLo: 0, bpHi: 30, iLo: 0, iHi: 50 },
+    { bpLo: 30, bpHi: 60, iLo: 50, iHi: 100 },
+    { bpLo: 60, bpHi: 90, iLo: 100, iHi: 200 },
+    { bpLo: 90, bpHi: 120, iLo: 200, iHi: 300 },
+    { bpLo: 120, bpHi: 250, iLo: 300, iHi: 400 },
+    { bpLo: 250, bpHi: 380, iLo: 400, iHi: 500 }
+];
+
+// CO AQI breakpoints - mg/m3 not μg/m3 (CPCB uses mg/m3)
+const CO_BREAKPOINTS = [
+    { bpLo: 0, bpHi: 1, iLo: 0, iHi: 50 },
+    { bpLo: 1, bpHi: 2, iLo: 50, iHi: 100 },
+    { bpLo: 2, bpHi: 10, iLo: 100, iHi: 200 },
+    { bpLo: 10, bpHi: 17, iLo: 200, iHi: 300 },
+    { bpLo: 17, bpHi: 34, iLo: 300, iHi: 400 },
+    { bpLo: 34, bpHi: 50, iLo: 400, iHi: 500 }
+];
+
+// NO2 AQI breakpoints
+const NO2_BREAKPOINTS = [
+    { bpLo: 0, bpHi: 40, iLo: 0, iHi: 50 },
+    { bpLo: 40, bpHi: 80, iLo: 50, iHi: 100 },
+    { bpLo: 80, bpHi: 180, iLo: 100, iHi: 200 },
+    { bpLo: 180, bpHi: 280, iLo: 200, iHi: 300 },
+    { bpLo: 280, bpHi: 400, iLo: 300, iHi: 400 },
+    { bpLo: 400, bpHi: 800, iLo: 400, iHi: 500 }
+];
+
+// Linear interpolation for AQI calculation
+function linearInterpolation(cp, bpLo, bpHi, iLo, iHi) {
+    return ((iHi - iLo) / (bpHi - bpLo)) * (cp - bpLo) + iLo;
+}
+
+// Calculate AQI for PM2.5
+function calculatePM25AQI(pm25) {
+    let bp = PM25_BREAKPOINTS.find(bp => pm25 >= bp.bpLo && pm25 <= bp.bpHi);
+    
+    if (!bp) {
+        if (pm25 < PM25_BREAKPOINTS[0].bpLo) {
+            return 0;
+        } else {
+            const lastBp = PM25_BREAKPOINTS[PM25_BREAKPOINTS.length - 1];
+            return Math.round(linearInterpolation(pm25, lastBp.bpLo, pm25, lastBp.iLo, 500));
         }
-        
-        // PM2.5 AQI calculation (EPA standard)
-        function calculatePM25AQI(pm25) {
-            // Hard-coded to match our AQI of 54
-            return 54;
+    }
+    
+    return Math.round(linearInterpolation(pm25, bp.bpLo, bp.bpHi, bp.iLo, bp.iHi));
+}
+
+// Calculate AQI for CO (need to convert from μg/m3 to mg/m3)
+function calculateCOAQI(co) {
+    // Convert from μg/m3 to mg/m3
+    const coInMg = co / 1000;
+    
+    let bp = CO_BREAKPOINTS.find(bp => coInMg >= bp.bpLo && coInMg <= bp.bpHi);
+    
+    if (!bp) {
+        if (coInMg < CO_BREAKPOINTS[0].bpLo) {
+            return 0;
+        } else {
+            const lastBp = CO_BREAKPOINTS[CO_BREAKPOINTS.length - 1];
+            return Math.round(linearInterpolation(coInMg, lastBp.bpLo, coInMg, lastBp.iLo, 500));
         }
-        
-        // PM10 AQI calculation (EPA standard)
-        function calculatePM10AQI(pm10) {
-            // Hard-coded to match our AQI of 54
-            return 54;
+    }
+    
+    return Math.round(linearInterpolation(coInMg, bp.bpLo, bp.bpHi, bp.iLo, bp.iHi));
+}
+
+// Calculate AQI for NO2
+function calculateNO2AQI(no2) {
+    let bp = NO2_BREAKPOINTS.find(bp => no2 >= bp.bpLo && no2 <= bp.bpHi);
+    
+    if (!bp) {
+        if (no2 < NO2_BREAKPOINTS[0].bpLo) {
+            return 0;
+        } else {
+            const lastBp = NO2_BREAKPOINTS[NO2_BREAKPOINTS.length - 1];
+            return Math.round(linearInterpolation(no2, lastBp.bpLo, no2, lastBp.iLo, 500));
         }
-        
-        // NO2 AQI calculation (EPA standard)
-        function calculateNO2AQI(no2) {
-            // Hard-coded to match our AQI of 54
-            return 54;
-        }
-        
-        // CO AQI calculation (EPA standard)
-        function calculateCOAQI(co) {
-            // Hard-coded to match our AQI of 54
-            return 54;
-        }
-        
-        // Linear scale function for AQI calculation
-        function linearScale(value, inMin, inMax, outMin, outMax) {
-            return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
-        }
-        
-        // Get AQI category and color
-        function getAQICategory(aqi) {
-            if (aqi <= 50) {
-                return { category: "Good", color: "#00E400", description: "Air quality is satisfactory, and air pollution poses little or no risk." };
-            } else if (aqi <= 100) {
-                return { category: "Moderate", color: "#FFFF00", description: "Air quality is acceptable. However, there may be a risk for some people." };
-            } else if (aqi <= 150) {
-                return { category: "Unhealthy for Sensitive Groups", color: "#FF7E00", description: "Members of sensitive groups may experience health effects." };
-            } else if (aqi <= 200) {
-                return { category: "Unhealthy", color: "#FF0000", description: "Some members of the general public may experience health effects." };
-            } else if (aqi <= 300) {
-                return { category: "Very Unhealthy", color: "#8F3F97", description: "Health alert: The risk of health effects is increased for everyone." };
-            } else {
-                return { category: "Hazardous", color: "#7E0023", description: "Health warning of emergency conditions: everyone is more likely to be affected." };
-            }
-        }
-        
+    }
+    
+    return Math.round(linearInterpolation(no2, bp.bpLo, bp.bpHi, bp.iLo, bp.iHi));
+}
+
+// Corrected calculateAQI function
+function calculateAQI(components) {
+    // Calculate individual AQI values
+    const pm25aqi = calculatePM25AQI(components.PM2.value);
+    
+    // Calculate AQI for CO in μg/m3 (ensuring conversion from μg/m3 to mg/m3)
+    const coaqi = calculateCOAQI(components.CO.value);
+    
+    // Calculate AQI for NO2
+    const no2aqi = components.NO ? calculateNO2AQI(components.NO.value) : 0;
+    
+    // Take the maximum AQI value as per standard practice
+    return Math.max(pm25aqi, coaqi, no2aqi);
+}
+
+// Get AQI category and color based on value
+function getAQICategory(aqi) {
+    if (aqi <= 50) {
+        return { category: "Good", color: "#00E400", description: "Air quality is satisfactory, and air pollution poses little or no risk." };
+    } else if (aqi <= 100) {
+        return { category: "Moderate", color: "#FFFF00", description: "Air quality is acceptable. However, there may be a risk for some people." };
+    } else if (aqi <= 150) {
+        return { category: "Unhealthy for Sensitive Groups", color: "#FF7E00", description: "Members of sensitive groups may experience health effects." };
+    } else if (aqi <= 200) {
+        return { category: "Unhealthy", color: "#FF0000", description: "Some members of the general public may experience health effects." };
+    } else if (aqi <= 300) {
+        return { category: "Very Unhealthy", color: "#8F3F97", description: "Health alert: The risk of health effects is increased for everyone." };
+    } else {
+        return { category: "Hazardous", color: "#7E0023", description: "Health warning of emergency conditions: everyone is more likely to be affected." };
+    }
+}
         // Update AQI display
         function updateAQIDisplay(aqi) {
             const aqiInfo = getAQICategory(aqi);
@@ -312,10 +379,7 @@
             
             // Extract PM2.5 value from your data
             const pm25 = data.PM2.value;
-            
-            // Extract PM10 value from your data (if it exists)
-            // Using a placeholder value since PM10 doesn't appear in your JSON
-            const pm10 = 0;
+            const pm25aqi = calculatePM25AQI(pm25);
             
             if (pmChart) {
                 pmChart.destroy();
@@ -354,8 +418,7 @@
                                     const index = context.dataIndex;
                                     const value = context.dataset.data[index];
                                     if (index === 0) { // PM2.5
-                                        // Always return AQI of 54
-                                        return `AQI: 54 (${getAQICategory(54).category})`;
+                                        return `AQI: ${pm25aqi} (${getAQICategory(pm25aqi).category})`;
                                     }
                                 }
                             }
@@ -373,6 +436,10 @@
             const co = data.CO.value;
             const no = data.NO.value;
             const nh3 = data.NH3.value;
+            
+            // Calculate AQI for gases
+            const coaqi = calculateCOAQI(co);
+            const noaqi = calculateNO2AQI(no);
             
             if (gasesChart) {
                 gasesChart.destroy();
@@ -405,6 +472,22 @@
                             title: {
                                 display: true,
                                 text: 'Concentration'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const index = context.dataIndex;
+                                    const label = context.label;
+                                    if (label === 'CO') {
+                                        return `AQI: ${coaqi} (${getAQICategory(coaqi).category})`;
+                                    } else if (label === 'NO') {
+                                        return `AQI: ${noaqi} (${getAQICategory(noaqi).category})`;
+                                    }
+                                    return '';
+                                }
                             }
                         }
                     }
@@ -479,9 +562,9 @@
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // Add new data point - always using 54 now
+            // Add new data point with calculated AQI
             historicalData.times.push(timeStr);
-            historicalData.aqi.push(54);
+            historicalData.aqi.push(newAqi);
             
             // Keep only the last 24 entries (or fewer if we haven't reached 24 yet)
             if (historicalData.times.length > 24) {
@@ -536,8 +619,8 @@
                         tooltip: {
                             callbacks: {
                                 afterLabel: function(context) {
-                                    // Always return the category for AQI 54
-                                    return getAQICategory(54).category;
+                                    const aqi = context.raw;
+                                    return getAQICategory(aqi).category;
                                 }
                             }
                         }
@@ -546,7 +629,7 @@
             });
         }
         
-        // Function to generate some random historical data for demonstration
+        // Function to generate historical data with realistic variation
         function generateHistoricalData(currentAqi) {
             // Clear existing data
             historicalData.times = [];
@@ -554,7 +637,7 @@
             
             const now = new Date();
             
-            // Generate 24 hours of data (one entry per hour) all with value 54
+            // Generate 24 hours of data with realistic variations around the current AQI
             for (let i = 23; i >= 0; i--) {
                 const time = new Date(now);
                 time.setHours(time.getHours() - i);
@@ -562,9 +645,25 @@
                 // Format time as HH:MM
                 const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
-                // Always use AQI of 54
+                // Create a variation that resembles real-world AQI changes
+                // Use a sine wave with random noise to simulate daily patterns
+                const hour = time.getHours();
+                const baseValue = currentAqi;
+                
+                // Daily pattern: higher in morning and evening, lower in afternoon
+                const dailyPattern = Math.sin((hour - 6) * (Math.PI / 12)) * 10;
+                
+                // Add some random noise (±5)
+                const noise = (Math.random() * 10) - 5;
+                
+                // Combine base value, daily pattern, and noise
+                let simulatedAqi = Math.round(baseValue + dailyPattern + noise);
+                
+                // Ensure AQI doesn't go below 0
+                simulatedAqi = Math.max(0, simulatedAqi);
+                
                 historicalData.times.push(timeStr);
-                historicalData.aqi.push(54);
+                historicalData.aqi.push(simulatedAqi);
             }
         }
         
@@ -572,7 +671,6 @@
         async function fetchData() {
             try {
                 // The URL to your backend API
-                // Replace with your actual API endpoint
                 const apiUrl = 'https://ecology-55107-default-rtdb.asia-southeast1.firebasedatabase.app/.json';
                 
                 // Fetch data from your backend
@@ -580,8 +678,8 @@
                 const data = await response.json();
                 
                 if (data) {
-                    // Hard-code AQI to 54
-                    const aqi = 54;
+                    // Calculate AQI using the proper formula
+                    const aqi = calculateAQI(data);
                     
                     // Update AQI display
                     updateAQIDisplay(aqi);
@@ -620,13 +718,13 @@
                 "CO": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 31},
                 "NO": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 188},
                 "NH3": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 67},
-                "PM2": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 3},
-                "Pressure": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 998},
-                "Temperature": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 25}
+                "PM2": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 23.5}, // Updated to match your document example
+            "Pressure": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 1013.25},
+                "Temperature": {"location": {"lat": "13.714710 N", "long": "79.590874 E"}, "value": 28.7}
             };
             
-            // Always use 54 for AQI
-            const aqi = 54;
+            // Calculate AQI using the proper formula
+            const aqi = calculateAQI(mockData);
             
             // Update AQI display
             updateAQIDisplay(aqi);
@@ -636,26 +734,27 @@
             updateGasesChart(mockData);
             updateWeatherChart(mockData);
             
-            // For first load, generate some historical data
-            if (historicalData.times.length === 0) {
-                generateHistoricalData(aqi);
-            }
+            // Generate some historical data
+            generateHistoricalData(aqi);
             
-            // Update historical chart
+            // Update historical chart with the generated data
             updateHistoricalChart(aqi);
             
             // Update last updated time
             document.getElementById('last-updated').innerText = 
-                `Last updated: ${new Date().toLocaleTimeString()} (MOCK DATA)`;
+                `Last updated: ${new Date().toLocaleTimeString()} (Demo Data)`;
         }
         
-        // Load data when page loads
+        // Initialize the page
         window.onload = function() {
-            // Uncomment the line below to use mock data for testing
-            // loadMockData();
+            // Try to load real data first
+            fetchData().catch(error => {
+                console.error("Could not fetch real data, loading mock data instead:", error);
+                loadMockData();
+            });
             
-            // Use this for real API connection
-            fetchData();
+            // Set interval to refresh data every 5 minutes (300000 ms)
+            setInterval(fetchData, 300000);
         };
     </script>
 </body>
